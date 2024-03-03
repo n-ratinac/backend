@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, request
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import src.data as dal  # data access layer
 import src.functions as f
@@ -65,9 +66,33 @@ def create_app(test_config=None):
             dal.add_question(json)
             return "Created", 201
 
-    @app.route("/question/<int:id>", methods=["GET"])
+    @app.route("/question/<int:id>", methods=["GET", "PUT", "DELETE"])
     def get_question(id):
-        question = dal.get_questions(id)
-        return question.to_dict()
+        if request.method == "GET":
+            question = dal.get_questions(id)
+            return question.to_dict()
+
+        if request.method == "PUT":
+            json = request.json
+            json["dummies"] = "|".join(json["dummies"])
+            try:
+                dal.edit_question(id, json)
+            except:
+                return "Not Found", 404
+            return "OK", 200
+
+        if request.method == "DELETE":
+            try:
+                dal.delete_question(id)
+            except:
+                return "Not Found", 404
+            return "OK", 200
+
+    @app.route("/register", methods=["POST"])
+    def register():
+        data = request.form.to_dict()
+        data["password"] = generate_password_hash(data["password"])
+        dal.add_user(data)
+        return "OK", 201
 
     return app
